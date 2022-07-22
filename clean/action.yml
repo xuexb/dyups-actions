@@ -1,0 +1,61 @@
+name: "dyups Clean"
+description: "Clean site with dyups"
+inputs:
+  ssh-host:
+    description: "SSH HOST"
+    required: true
+  ssh-port:
+    description: "SSH Port"
+    required: true
+  ssh-username:
+    description: "SSH Username"
+    required: true
+  ssh-key:
+    description: "SSH private key"
+    required: true
+  domain:
+    description: "Deployed domain name"
+    required: true
+  dyups-server:
+    description: "dyups service domain name"
+    required: true
+  dyups-token:
+    description: "dyups service token"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install SSH KEY
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ inputs.ssh-key }} 
+        known_hosts: unnecessary
+    - name: Generate deployment scripts
+      shell: bash
+      run: |
+        echo '#!/bin/bash
+        (docker ps -aq --filter "name=dyups-${{ inputs.domain }}" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1
+        ' > /tmp/agent.sh
+    - name: Clean on a remote machine
+      id: deploy
+      shell: bash
+      run: |
+        host=${{ inputs.ssh-host }}
+        hosts=(${host//,/ })
+        for key in "${hosts[@]}"; do
+          res=$(ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no "${{ inputs.ssh-username }}@$key" 'bash -s' < /tmp/agent.sh)
+          code=$?
+          if [ "$code" != "0" ]; then
+            echo "$key 删除失败，状态码：$code ，信息：$res"
+          fi
+        done
+    - name: Unregister a dyups domain name
+      shell: bash
+      run: |
+          # 注销 dyups ，会自动同步
+          dyupsurl="${{ inputs.dyups-server }}/api/${{ inputs.domain }}?r=$RANDOM"
+          httpcode=$(curl -sL -w '%{http_code}' -H 'x-dyups-token: ${{ inputs.dyups-token }}' -X DELETE $dyupsurl -o /dev/null)
+          if [ "$httpcode" != "200" ]; then
+            echo "注册 dyups 失败，响应码：$httpcode"
+            exit 20
+          fi
