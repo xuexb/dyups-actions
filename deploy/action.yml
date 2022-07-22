@@ -50,10 +50,10 @@ runs:
               ${{ inputs.image }} > /dev/null 2>&1 \
           && ip=$(curl -s --max-time 5 ifconfig.me) \
           && port=$(docker ps --filter "name=${{ inputs.domain }}" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
-          && if [ "$ip" == "" ]; then exit 1; fi \
-          && if [ "$port" == "" ]; then exit 2; fi \
+          && if [ "$ip" == "" ]; then exit 10; fi \
+          && if [ "$port" == "" ]; then exit 11; fi \
           && httpcode=`curl -sL -w '%{http_code}' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null` \
-          && if [ "$httpcode" != "200" ]; then exit 3; fi \
+          && if [ "$httpcode" != "200" ]; then exit 12; fi \
           && echo "{\"address\":\"$ip\",\"port\":$port}"
         ' > /tmp/agent.sh
     - name: Deploy on a remote machine
@@ -78,7 +78,7 @@ runs:
         done
         if [ "$result" == "" ]; then
           echo "没有部署成功"
-          exit 1
+          exit 13
         fi
         result="[$result]"
         echo "::set-output name=result::$result"
@@ -90,5 +90,13 @@ runs:
           httpcode=$(curl -sL -w '%{http_code}' -H 'x-dyups-token: ${{ inputs.dyups-token }}' -X POST -d '${{ steps.deploy.outputs.result }}' $dyupsurl -o /dev/null)
           if [ "$httpcode" != "200" ]; then
             echo "注册 dyups 失败，响应码：$httpcode"
-            exit 1
+            exit 14
           fi
+    - name: Test dyups WLB domain
+      shell: bash
+      run: |
+        httpcode=`curl -sL -w '%{http_code}' --connect-timeout 5 https://${{ inputs.domain }} -o /dev/null`
+        if [ "$httpcode" != "200" ]; then
+          echo "访问 dyups WLB 错误，响应码：$httpcode"
+          exit 15
+        fi

@@ -11,6 +11,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Test deploy
         uses: ./deploy/
         with:
@@ -21,13 +22,5 @@ jobs:
           image: ${{ secrets.TEST_IMAGE }}
           dyups-server: ${{ secrets.DYUPS_SERVER }}
           dyups-token: ${{ secrets.DYUPS_TOKEN }}
-          domain: ${{ secrets.DOMAIN }}
+          domain: ${{ ENV.DOMAIN }}
           container-port: 8080
-      - name: Test curl
-        timeout-minutes: 1
-        run: |
-          httpcode=`curl -sL -w '%{http_code}' --connect-timeout 5 https://${{ env.DOMAIN }} -o /dev/null`
-          if [ "$httpcode" != "200" ]; then
-            echo "访问 dyups WLB 错误，响应码：$httpcode"
-            exit 1
-          fi
