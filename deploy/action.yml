@@ -1,0 +1,94 @@
+name: "dyups Deploy"
+description: "Deploy site with dyups"
+inputs:
+  ssh-host:
+    description: "SSH HOST"
+    required: true
+  ssh-port:
+    description: "SSH Port"
+    required: true
+  ssh-username:
+    description: "SSH Username"
+    required: true
+  ssh-key:
+    description: "SSH private key"
+    required: true
+  image:
+    description: "Docker image name and tag"
+    required: true
+  container-port:
+    description: "Docker container port"
+    required: true
+  domain:
+    description: "Deployed domain name"
+    required: true
+  dyups-server:
+    description: "dyups service domain name"
+    required: true
+  dyups-token:
+    description: "dyups service token"
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Install SSH KEY
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ inputs.ssh-key }} 
+        known_hosts: unnecessary
+    - name: Generate deployment scripts
+      shell: bash
+      run: |
+        echo '#!/bin/bash
+        docker pull ${{ inputs.image }} > /dev/null 2>&1 \
+          && (docker ps -aq --filter "name=dyups-${{ inputs.domain }}" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1 \
+          && docker run \
+              -p ${{ inputs.container-port }} \
+              --rm \
+              -d \
+              --name "dyups-${{ inputs.domain }}" \
+              ${{ inputs.image }} > /dev/null 2>&1 \
+          && ip=$(curl -s --max-time 5 ifconfig.me) \
+          && port=$(docker ps --filter "name=${{ inputs.domain }}" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
+          && if [ "$ip" == "" ]; then exit 1; fi \
+          && if [ "$port" == "" ]; then exit 2; fi \
+          && httpcode=`curl -sL -w '%{http_code}' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null` \
+          && if [ "$httpcode" != "200" ]; then exit 3; fi \
+          && echo "{\"address\":\"$ip\",\"port\":$port}"
+        ' > /tmp/agent.sh
+    - name: Deploy on a remote machine
+      id: deploy
+      shell: bash
+      run: |
+        host=${{ inputs.ssh-host }}
+        hosts=(${host//,/ })
+        result=""
+        for key in "${hosts[@]}"; do
+          res=$(ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no "${{ inputs.ssh-username }}@$key" 'bash -s' < /tmp/agent.sh)
+          code=$?
+          if [ "$code" != "0" ]; then
+            echo "$key 部署失败，状态码：$code ，信息：$res"
+          else
+            if [ "$result" == "" ]; then
+              result="$res"
+            else
+              result="$result,$res"
+            fi
+          fi
+        done
+        if [ "$result" == "" ]; then
+          echo "没有部署成功"
+          exit 1
+        fi
+        result="[$result]"
+        echo "::set-output name=result::$result"
+    - name: Register a dyups domain name
+      shell: bash
+      run: |
+          # 注册 dyups ，会自动同步
+          dyupsurl="${{ inputs.dyups-server }}/api/${{ inputs.domain }}?r=$RANDOM"
+          httpcode=$(curl -sL -w '%{http_code}' -H 'x-dyups-token: ${{ inputs.dyups-token }}' -X POST -d '${{ steps.deploy.outputs.result }}' $dyupsurl -o /dev/null)
+          if [ "$httpcode" != "200" ]; then
+            echo "注册 dyups 失败，响应码：$httpcode"
+            exit 1
+          fi
