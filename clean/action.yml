@@ -30,6 +30,7 @@ runs:
       with:
         key: ${{ inputs.ssh-key }} 
         known_hosts: unnecessary
+        if_key_exists: replace
     - name: Generate deployment scripts
       shell: bash
       run: |
