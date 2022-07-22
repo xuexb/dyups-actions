@@ -24,3 +24,13 @@ jobs:
           dyups-token: ${{ secrets.DYUPS_TOKEN }}
           domain: ${{ ENV.DOMAIN }}
           container-port: 8080
+      - name: Test Clean
+        uses: ./clean/
+        with:
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-username: ${{ secrets.SSH_USERNAME }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+          ssh-port: ${{ secrets.SSH_PORT }}
+          dyups-server: ${{ secrets.DYUPS_SERVER }}
+          dyups-token: ${{ secrets.DYUPS_TOKEN }}
+          domain: ${{ ENV.DOMAIN }}
