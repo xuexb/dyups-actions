@@ -16,9 +16,14 @@ inputs:
   image:
     description: "Docker image name and tag"
     required: true
+  container-name:
+    description: "Docker container name, default is dyups-$domain"
+    required: false
+    default: ""
   container-port:
-    description: "Docker container port"
-    required: true
+    description: "Docker container port, default is 8080"
+    required: false
+    default: "8080"
   domain:
     description: "Deployed domain name"
     required: true
@@ -45,37 +50,41 @@ runs:
       shell: bash
       run: |
         if [ "$RUNNER_DEBUG" == "1" ]; then
-        echo '#!/bin/bash
-        docker pull ${{ inputs.image }} \
-          && (docker ps -aq --filter "name=dyups-${{ inputs.domain }}" | xargs docker rm -f || echo "Delete fail") \
-          && docker_run="${{ inputs.docker-run }}" \
-          && docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "dyups-${{ inputs.domain }}" ${{ inputs.image }}'\'' \
-          && if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi \
-          && eval $docker_run \
-          && ip=$(curl -s --max-time 5 ifconfig.me) \
-          && port=$(docker ps --filter "name=${{ inputs.domain }}" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
-          && if [ "$ip" == "" ]; then exit 10; fi \
-          && if [ "$port" == "" ]; then exit 11; fi \
-          && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM") \
-          && if [ "$httpcode" != "200" ]; then exit 12; fi \
-          && echo "{\"address\":\"$ip\",\"port\":$port}"
-        ' > /tmp/agent.sh
+          echo '#!/bin/bash
+          container_name="${{ inputs.container-name }}"
+          if [ "$container_name" == "" ]; then container_name="dyups-${{ inputs.domain }}"; fi
+          docker_run="${{ inputs.docker-run }}"
+          docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "$container_name" ${{ inputs.image }}'\''
+          if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi
+          docker pull ${{ inputs.image }} \
+            && (docker ps -aq --filter "name=$container_name" | xargs docker rm -f || echo "Delete fail") \
+            && eval $docker_run \
+            && ip=$(curl -s --max-time 5 ifconfig.me) \
+            && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
+            && if [ "$ip" == "" ]; then exit 10; fi \
+            && if [ "$port" == "" ]; then exit 11; fi \
+            && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM") \
+            && if [ "$httpcode" != "200" ]; then exit 12; fi \
+            && echo "{\"address\":\"$ip\",\"port\":$port}"
+          ' > /tmp/agent.sh
         else
-        echo '#!/bin/bash
-        docker pull ${{ inputs.image }} > /dev/null 2>&1 \
-          && (docker ps -aq --filter "name=dyups-${{ inputs.domain }}" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1 \
-          && docker_run="${{ inputs.docker-run }}" \
-          && docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "dyups-${{ inputs.domain }}" ${{ inputs.image }}'\'' \
-          && if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi \
-          && eval $docker_run > /dev/null 2>&1 \
-          && ip=$(curl -s --max-time 5 ifconfig.me) \
-          && port=$(docker ps --filter "name=${{ inputs.domain }}" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
-          && if [ "$ip" == "" ]; then exit 10; fi \
-          && if [ "$port" == "" ]; then exit 11; fi \
-          && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null) \
-          && if [ "$httpcode" != "200" ]; then exit 12; fi \
-          && echo "{\"address\":\"$ip\",\"port\":$port}"
-        ' > /tmp/agent.sh
+          echo '#!/bin/bash
+          container_name="${{ inputs.container-name }}"
+          if [ "$container_name" == "" ]; then container_name="dyups-${{ inputs.domain }}"; fi
+          docker_run="${{ inputs.docker-run }}"
+          docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "$container_name" ${{ inputs.image }}'\''
+          if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi
+          docker pull ${{ inputs.image }} > /dev/null 2>&1 \
+            && (docker ps -aq --filter "name=$container_name" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1 \
+            && eval $docker_run > /dev/null 2>&1 \
+            && ip=$(curl -s --max-time 5 ifconfig.me) \
+            && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
+            && if [ "$ip" == "" ]; then exit 10; fi \
+            && if [ "$port" == "" ]; then exit 11; fi \
+            && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null) \
+            && if [ "$httpcode" != "200" ]; then exit 12; fi \
+            && echo "{\"address\":\"$ip\",\"port\":$port}"
+          ' > /tmp/agent.sh
         fi
         if [ "$RUNNER_DEBUG" == "1" ]; then
           cat /tmp/agent.sh
