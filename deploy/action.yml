@@ -44,21 +44,39 @@ runs:
     - name: Generate deployment scripts
       shell: bash
       run: |
+        if [ "$RUNNER_DEBUG" == "1" ]; then
+        echo '#!/bin/bash
+        docker pull ${{ inputs.image }} \
+          && (docker ps -aq --filter "name=dyups-${{ inputs.domain }}" | xargs docker rm -f || echo "Delete fail") \
+          && docker_run="${{ inputs.docker-run }}" \
+          && docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "dyups-${{ inputs.domain }}" ${{ inputs.image }}'\'' \
+          && if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi \
+          && eval $docker_run \
+          && ip=$(curl -s --max-time 5 ifconfig.me) \
+          && port=$(docker ps --filter "name=${{ inputs.domain }}" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
+          && if [ "$ip" == "" ]; then exit 10; fi \
+          && if [ "$port" == "" ]; then exit 11; fi \
+          && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM") \
+          && if [ "$httpcode" != "200" ]; then exit 12; fi \
+          && echo "{\"address\":\"$ip\",\"port\":$port}"
+        ' > /tmp/agent.sh
+        else
         echo '#!/bin/bash
         docker pull ${{ inputs.image }} > /dev/null 2>&1 \
           && (docker ps -aq --filter "name=dyups-${{ inputs.domain }}" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1 \
           && docker_run="${{ inputs.docker-run }}" \
-          && docker_run_default='\''docker run -p ${{ inputs.container-port }} --rm -d --name "dyups-${{ inputs.domain }}" ${{ inputs.image }}'\'' \
+          && docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "dyups-${{ inputs.domain }}" ${{ inputs.image }}'\'' \
           && if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi \
           && eval $docker_run > /dev/null 2>&1 \
           && ip=$(curl -s --max-time 5 ifconfig.me) \
           && port=$(docker ps --filter "name=${{ inputs.domain }}" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
           && if [ "$ip" == "" ]; then exit 10; fi \
           && if [ "$port" == "" ]; then exit 11; fi \
-          && httpcode=`curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null` \
+          && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null) \
           && if [ "$httpcode" != "200" ]; then exit 12; fi \
           && echo "{\"address\":\"$ip\",\"port\":$port}"
         ' > /tmp/agent.sh
+        fi
         if [ "$RUNNER_DEBUG" == "1" ]; then
           cat /tmp/agent.sh
         fi
@@ -89,6 +107,9 @@ runs:
           fi
         done
         rm -rf /tmp/agent.sh
+        if [ "$RUNNER_DEBUG" == "1" ]; then
+          exit 16
+        fi
         if [ "$result" == "" ]; then
           echo "没有部署成功"
           exit 13
@@ -108,7 +129,7 @@ runs:
     - name: Test dyups WLB domain
       shell: bash
       run: |
-        httpcode=`curl -sL -w '%{http_code}' --connect-timeout 5 https://${{ inputs.domain }} -o /dev/null`
+        httpcode=$(curl -sL -w '%{http_code}' --connect-timeout 5 https://${{ inputs.domain }} -o /dev/null)
         if [ "$httpcode" != "200" ]; then
           echo "访问 dyups WLB 错误，响应码：$httpcode"
           exit 15

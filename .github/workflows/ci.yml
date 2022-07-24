@@ -8,7 +8,7 @@ env:
   DOMAIN: kakawoniu.xuexb.com
 
 jobs:
-  test:
+  test-default-docker-run:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
