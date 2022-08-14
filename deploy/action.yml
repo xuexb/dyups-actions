@@ -36,7 +36,7 @@ inputs:
   dyups-try-count:
     description: "Number of retries on dyups error"
     required: false
-    default: "3"
+    default: "5"
   docker-run:
     description: "Docker run command"
     required: false
