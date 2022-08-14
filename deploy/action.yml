@@ -33,6 +33,10 @@ inputs:
   dyups-token:
     description: "dyups service token"
     required: true
+  dyups-try-count:
+    description: "Number of retries on dyups error"
+    required: false
+    default: "3"
   docker-run:
     description: "Docker run command"
     required: false
@@ -138,9 +142,20 @@ runs:
       run: |
           # 注册 dyups ，会自动同步
           dyupsurl="${{ inputs.dyups-server }}/api/${{ inputs.domain }}?r=$RANDOM"
-          httpcode=$(curl -sL -w '%{http_code}' -H 'x-dyups-token: ${{ inputs.dyups-token }}' -X POST -d '${{ steps.deploy.outputs.result }}' $dyupsurl -o /dev/null)
-          if [ "$httpcode" != "200" ]; then
-            echo "注册 dyups 失败，响应码：$httpcode"
+          dyups_result=""
+          for((i=1;i<=${{ inputs.dyups-try-count }};i++)); do
+            httpcode=$(curl -sL -w '%{http_code}' -H 'x-dyups-token: ${{ inputs.dyups-token }}' -X POST -d '${{ steps.deploy.outputs.result }}' $dyupsurl -o /dev/null)
+            if [ "$httpcode" != "200" ]; then
+              echo "注册 dyups 失败，响应码：$httpcode ，继续尝试"
+              dyups_result="0"
+            else
+              echo "注册 dyups 成功"
+              dyups_result="1"
+              break
+            fi
+          done
+          if [ "$dyups_result" == "0" ]; then
+            echo "尝试了${{ inputs.dyups-try-count }}次，最终还是失败，我也没办法"
             exit 14
           fi
     - name: Test dyups WLB domain
