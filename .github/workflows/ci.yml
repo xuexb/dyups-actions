@@ -53,7 +53,6 @@ jobs:
           env-list: |
             A=1
             B=2
-            H=${{ secrets.SSH_HOST }}
       - name: Test Clean
         uses: ./clean/
         with:

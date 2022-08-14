@@ -53,17 +53,18 @@ runs:
     - name: Generate deployment scripts
       shell: bash
       run: |
-        echo "env-list=${{ inputs.env-list }}"
         if [ "$RUNNER_DEBUG" == "1" ]; then
           echo '#!/bin/bash
+          echo "${{ inputs.env-list }}" > /tmp/.env.list
           container_name="${{ inputs.container-name }}"
           if [ "$container_name" == "" ]; then container_name="dyups-${{ inputs.domain }}"; fi
           docker_run="${{ inputs.docker-run }}"
-          docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "$container_name" ${{ inputs.image }}'\''
+          docker_run_default='\''docker run -p ${{ inputs.container-port }} --env-file /tmp/.env.list --restart=always -d --name "$container_name" ${{ inputs.image }}'\''
           if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi
           docker pull ${{ inputs.image }} \
             && (docker ps -aq --filter "name=$container_name" | xargs docker rm -f || echo "Delete fail") \
             && eval $docker_run \
+            && rm /tmp/.env.list \
             && ip=$(curl -s --max-time 5 ifconfig.me) \
             && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
             && if [ "$ip" == "" ]; then exit 10; fi \
@@ -74,14 +75,16 @@ runs:
           ' > /tmp/agent.sh
         else
           echo '#!/bin/bash
+          echo "${{ inputs.env-list }}" > /tmp/.env.list
           container_name="${{ inputs.container-name }}"
           if [ "$container_name" == "" ]; then container_name="dyups-${{ inputs.domain }}"; fi
           docker_run="${{ inputs.docker-run }}"
-          docker_run_default='\''docker run -p ${{ inputs.container-port }} --restart=always -d --name "$container_name" ${{ inputs.image }}'\''
+          docker_run_default='\''docker run -p ${{ inputs.container-port }} --env-file /tmp/.env.list --restart=always -d --name "$container_name" ${{ inputs.image }}'\''
           if [ "$docker_run" == "" ]; then docker_run=$docker_run_default; fi
           docker pull ${{ inputs.image }} > /dev/null 2>&1 \
             && (docker ps -aq --filter "name=$container_name" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1 \
             && eval $docker_run > /dev/null 2>&1 \
+            && rm /tmp/.env.list \
             && ip=$(curl -s --max-time 5 ifconfig.me) \
             && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
             && if [ "$ip" == "" ]; then exit 10; fi \
