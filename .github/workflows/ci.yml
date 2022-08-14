@@ -34,8 +34,38 @@ jobs:
           dyups-server: ${{ secrets.DYUPS_SERVER }}
           dyups-token: ${{ secrets.DYUPS_TOKEN }}
           domain: ${{ env.DOMAIN }}
-  test-docker-run:
+  test-env-list:
     needs: test-default-docker-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test deploy
+        uses: ./deploy/
+        with:
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-username: ${{ secrets.SSH_USERNAME }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+          ssh-port: ${{ secrets.SSH_PORT }}
+          image: ${{ secrets.TEST_IMAGE }}
+          dyups-server: ${{ secrets.DYUPS_SERVER }}
+          dyups-token: ${{ secrets.DYUPS_TOKEN }}
+          domain: ${{ env.DOMAIN }}
+          env-list: |
+            A=1
+            B=2
+            H=${{ secrets.SSH_HOST }}
+      - name: Test Clean
+        uses: ./clean/
+        with:
+          ssh-host: ${{ secrets.SSH_HOST }}
+          ssh-username: ${{ secrets.SSH_USERNAME }}
+          ssh-key: ${{ secrets.SSH_KEY }}
+          ssh-port: ${{ secrets.SSH_PORT }}
+          dyups-server: ${{ secrets.DYUPS_SERVER }}
+          dyups-token: ${{ secrets.DYUPS_TOKEN }}
+          domain: ${{ env.DOMAIN }}
+  test-docker-run:
+    needs: test-env-list
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3

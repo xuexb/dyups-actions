@@ -37,6 +37,10 @@ inputs:
     description: "Docker run command"
     required: false
     default: ""
+  env-list:
+    description: "ENV list"
+    required: false
+    default: ""
 runs:
   using: "composite"
   steps:
@@ -49,6 +53,7 @@ runs:
     - name: Generate deployment scripts
       shell: bash
       run: |
+        echo "env-list=${{ inputs.env-list }}"
         if [ "$RUNNER_DEBUG" == "1" ]; then
           echo '#!/bin/bash
           container_name="${{ inputs.container-name }}"
@@ -63,7 +68,7 @@ runs:
             && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
             && if [ "$ip" == "" ]; then exit 10; fi \
             && if [ "$port" == "" ]; then exit 11; fi \
-            && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM") \
+            && httpcode=$(curl -sL -w '\''%{http_code}'\'' --connect-timeout 3 "127.0.0.1:$port/?r=$RANDOM" -o /dev/null) \
             && if [ "$httpcode" != "200" ]; then exit 12; fi \
             && echo "{\"address\":\"$ip\",\"port\":$port}"
           ' > /tmp/agent.sh
