@@ -45,6 +45,18 @@ inputs:
     description: "ENV list"
     required: false
     default: ""
+  proxy-host:
+    description: "SSH Porxy HOST"
+    required: false
+    default: "sg01.ddns.xuexb.com"
+  proxy-port:
+    description: "SSH Porxy Port"
+    required: false
+    default: "22"
+  proxy-username:
+    description: "SSH Porxy Username"
+    required: false
+    default: "duke"
 runs:
   using: "composite"
   steps:
@@ -106,9 +118,9 @@ runs:
         result=""
         for key in "${hosts[@]}"; do
           if [ "$RUNNER_DEBUG" == "1" ]; then
-            ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no "${{ inputs.ssh-username }}@$key" pwd
+            ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no -o ProxyCommand="ssh -p ${{ inputs.proxy-port }} -o StrictHostKeyChecking=no -W %h:%p ${{ inputs.proxy-username }}@${{ inputs.proxy-host }}" "${{ inputs.ssh-username }}@$key" pwd
           fi
-          res=$(ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no "${{ inputs.ssh-username }}@$key" 'bash -s' < /tmp/agent.sh)
+          res=$(ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no -o ProxyCommand="ssh -p ${{ inputs.proxy-port }} -o StrictHostKeyChecking=no -W %h:%p ${{ inputs.proxy-username }}@${{ inputs.proxy-host }}" "${{ inputs.ssh-username }}@$key" 'bash -s' < /tmp/agent.sh)
           code=$?
           if [ "$RUNNER_DEBUG" == "1" ]; then
             echo "code=$code , res=$res"

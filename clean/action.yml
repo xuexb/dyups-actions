@@ -26,6 +26,18 @@ inputs:
     description: "Docker container name, default is dyups-$domain"
     required: false
     default: ""
+  proxy-host:
+    description: "SSH Porxy HOST"
+    required: false
+    default: "sg01.ddns.xuexb.com"
+  proxy-port:
+    description: "SSH Porxy Port"
+    required: false
+    default: "22"
+  proxy-username:
+    description: "SSH Porxy Username"
+    required: false
+    default: "duke"
 runs:
   using: "composite"
   steps:
@@ -50,7 +62,7 @@ runs:
         host=${{ inputs.ssh-host }}
         hosts=(${host//,/ })
         for key in "${hosts[@]}"; do
-          res=$(ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no "${{ inputs.ssh-username }}@$key" 'bash -s' < /tmp/agent.sh)
+          res=$(ssh -p ${{ inputs.ssh-port }} -o StrictHostKeyChecking=no -o ProxyCommand="ssh -p ${{ inputs.proxy-port }} -o StrictHostKeyChecking=no -W %h:%p ${{ inputs.proxy-username }}@${{ inputs.proxy-host }}" "${{ inputs.ssh-username }}@$key" 'bash -s' < /tmp/agent.sh)
           code=$?
           if [ "$code" != "0" ]; then
             echo "$key 删除失败，状态码：$code ，信息：$res"
