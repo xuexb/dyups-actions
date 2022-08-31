@@ -18,7 +18,8 @@ inputs:
     required: true
   dyups-server:
     description: "dyups service domain name"
-    required: true
+    default: "https://dyups.xuexb.com"
+    required: false
   dyups-token:
     description: "dyups service token"
     required: true
