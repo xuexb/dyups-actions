@@ -82,11 +82,9 @@ runs:
             && (docker ps -aq --filter "name=$container_name" | xargs docker rm -f || echo "Delete fail") \
             && eval $docker_run \
             && rm /tmp/.env.list \
-            && ip=$(curl -s --max-time 5 ifconfig.me) \
             && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
-            && if [ "$ip" == "" ]; then exit 10; fi \
             && if [ "$port" == "" ]; then exit 11; fi \
-            && echo "{\"address\":\"$ip\",\"port\":$port}"
+            && echo "{\"address\":\"dyups\",\"port\":$port}"
           ' > /tmp/agent.sh
         else
           echo '#!/bin/bash
@@ -100,11 +98,9 @@ runs:
             && (docker ps -aq --filter "name=$container_name" | xargs docker rm -f || echo "Delete fail") > /dev/null 2>&1 \
             && eval $docker_run > /dev/null 2>&1 \
             && rm /tmp/.env.list \
-            && ip=$(curl -s --max-time 5 ifconfig.me) \
             && port=$(docker ps --filter "name=$container_name" --format "{{.Ports}}" -a | awk -F ":" "{print \$2}" | awk -F "->" "{print \$1}") \
-            && if [ "$ip" == "" ]; then exit 10; fi \
             && if [ "$port" == "" ]; then exit 11; fi \
-            && echo "{\"address\":\"$ip\",\"port\":$port}"
+            && echo "{\"address\":\"dyups\",\"port\":$port}"
           ' > /tmp/agent.sh
         fi
         if [ "$RUNNER_DEBUG" == "1" ]; then
@@ -131,9 +127,9 @@ runs:
             echo "$key 部署失败，状态码：$code ，信息：$res"
           else
             if [ "$result" == "" ]; then
-              result="$res"
+              result="${res/dyups/$key}"
             else
-              result="$result,$res"
+              result="$result,${res/dyups/$key}"
             fi
           fi
         done
