@@ -5,41 +5,9 @@ on:
     branches: [ master ]
 
 env:
-  DOMAIN: kakawoniu.xuexb.com
+  DOMAIN: test-github-dyups-actions.xuexb.com
 
 jobs:
-  test-proxy-gz:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Test deploy
-        uses: ./deploy/
-        with:
-          ssh-host: ${{ secrets.SSH_HOST }}
-          ssh-username: ${{ secrets.SSH_USERNAME }}
-          ssh-key: ${{ secrets.SSH_KEY }}
-          ssh-port: ${{ secrets.SSH_PORT }}
-          proxy-host: gz01.ddns.xuexb.com
-          proxy-username: duke
-          proxy-port: 22
-          image: ${{ secrets.TEST_IMAGE }}
-          dyups-server: ${{ secrets.DYUPS_SERVER }}
-          dyups-token: ${{ secrets.DYUPS_TOKEN }}
-          domain: ${{ env.DOMAIN }}
-          container-port: 8080
-      - name: Test Clean
-        uses: ./clean/
-        with:
-          ssh-host: ${{ secrets.SSH_HOST }}
-          ssh-username: ${{ secrets.SSH_USERNAME }}
-          ssh-key: ${{ secrets.SSH_KEY }}
-          ssh-port: ${{ secrets.SSH_PORT }}
-          proxy-host: gz01.ddns.xuexb.com
-          proxy-username: duke
-          proxy-port: 22
-          dyups-server: ${{ secrets.DYUPS_SERVER }}
-          dyups-token: ${{ secrets.DYUPS_TOKEN }}
-          domain: ${{ env.DOMAIN }}
   test-default-docker-run:
     runs-on: ubuntu-latest
     steps:
